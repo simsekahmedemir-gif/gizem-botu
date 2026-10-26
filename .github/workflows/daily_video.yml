@@ -1,4 +1,4 @@
-name: Günlük Otomatik Gizem Videosu Üretici (AI Görselli)
+name: Günlük Otomatik Gizem Videosu Üretici v2 (AI Görselli)
 
 on:
   schedule:
