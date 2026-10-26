@@ -1,19 +1,15 @@
 import os
 import json
-import random
 import asyncio
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import edge_tts
 from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, ColorClip
 
-# API Anahtarlarını Al
+# API Anahtarını Ayarla
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-
-# Gemini İstemcisini Başlat (En güncel ve kararlı yöntem)
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
 
 def generate_script():
     print("1/5 Gemini ile gizemli senaryo üretiliyor...")
@@ -37,13 +33,11 @@ def generate_script():
     }
     """
     
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.8
-        )
+    # En kararlı ve her anahtarla çalışan model
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(
+        prompt,
+        generation_config={"response_mime_type": "application/json", "temperature": 0.8}
     )
     
     data = json.loads(response.text)
@@ -58,14 +52,11 @@ async def generate_voice(text, output_path="voice.mp3"):
 def create_video(script_data, audio_path="voice.mp3", output_path="output.mp4"):
     print("3/5 Video montajı hazırlanıyor...")
     
-    # Ses dosyasını yükle
     audio = AudioFileClip(audio_path)
     duration = audio.duration
     
-    # Arka plan (Dikey Shorts formatı: 1080x1920)
     bg = ColorClip(size=(1080, 1920), color=(10, 10, 10), duration=duration)
     
-    # Altyazı/Metin katmanı
     txt_clip = TextClip(
         script_data['script'], 
         fontsize=50, 
@@ -90,7 +81,6 @@ def create_video(script_data, audio_path="voice.mp3", output_path="output.mp4"):
 
 def upload_to_youtube(video_file, title, description):
     print("4/5 YouTube'a yükleniyor...")
-    # OAuth kimlik bilgileri
     client_id = os.environ.get("YT_CLIENT_ID")
     client_secret = os.environ.get("YT_CLIENT_SECRET")
     refresh_token = os.environ.get("YT_REFRESH_TOKEN")
@@ -111,7 +101,7 @@ def upload_to_youtube(video_file, title, description):
             "title": title + " #shorts",
             "description": description + "\n\n#gizem #korkunç #bilgi #shorts",
             "tags": ["gizem", "korkunç", "bilgi", "shorts"],
-            "categoryId": "24"  # Entertainment
+            "categoryId": "24"
         },
         "status": {
             "privacyStatus": "public",
