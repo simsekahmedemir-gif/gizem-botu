@@ -1,0 +1,39 @@
+name: Günlük Otomatik Gizem Videosu Üretici (AI Görselli)
+
+on:
+  schedule:
+    # Her gün Türkiye saati ile 19:00'da (UTC 16:00) otomatik çalışır
+    - cron: '0 16 * * *'
+  workflow_dispatch: # GitHub üzerinden tek tıkla manuel de tetikleyebilirsin
+
+jobs:
+  build_and_upload_video:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Depoyu Kopyala
+        uses: actions/checkout@v4
+
+      - name: FFmpeg ve Fontları Kur
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Python Kurulumu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Kütüphaneleri Yükle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Otomasyon Botunu Çalıştır
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          python main.py
