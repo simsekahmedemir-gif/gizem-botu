@@ -106,10 +106,44 @@ def generate_script():
     return data
 
 
+def clean_for_speech(text):
+    """Seslendirmeyi bozabilecek işaret ve emojileri temizler."""
+    text = re.sub(r'[*_#`~>\[\]{}|\\]', ' ', text)
+    text = re.sub(r"[^\w\s.,!?;:'\"()%\-…’“”]", ' ', text, flags=re.UNICODE)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 async def generate_voice(text, output_path="voice.mp3"):
-    print("2/5 Edge-TTS ile seslendirme yapılıyor...")
-    communicate = edge_tts.Communicate(text, "tr-TR-AhmetNeural")
-    await communicate.save(output_path)
+    print("2/5 Seslendirme yapılıyor...")
+    text = clean_for_speech(text)
+    last_error = None
+
+    # 1) Edge-TTS: iki ses, her biri için 3 deneme
+    for voice in ["tr-TR-AhmetNeural", "tr-TR-EmelNeural"]:
+        for attempt in range(1, 4):
+            try:
+                communicate = edge_tts.Communicate(text, voice)
+                await communicate.save(output_path)
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                    print(f"Edge-TTS başarılı ({voice})")
+                    return
+                raise RuntimeError("Ses dosyası boş")
+            except Exception as e:
+                last_error = e
+                print(f"Edge-TTS {voice} deneme {attempt} başarısız: {str(e)[:200]}")
+                await asyncio.sleep(2 * attempt)
+
+    # 2) Yedek: Google TTS (gTTS)
+    print("Edge-TTS çalışmadı, Google TTS (gTTS) deneniyor...")
+    try:
+        from gtts import gTTS
+        gTTS(text=text, lang="tr").save(output_path)
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            print("gTTS başarılı")
+            return
+        raise RuntimeError("gTTS boş dosya üretti")
+    except Exception as e:
+        raise RuntimeError(f"Seslendirme başarısız. Edge-TTS: {last_error} | gTTS: {e}")
 
 
 def download_image(prompt, index):
