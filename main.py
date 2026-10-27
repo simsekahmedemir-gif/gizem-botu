@@ -23,7 +23,6 @@ if not hasattr(Image, 'ANTIALIAS'):
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
 
-# Yeni nesil official Google GenAI istemcisi
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ==========================================
@@ -62,9 +61,8 @@ def generate_script():
     }
     """
     
-    # En güncel ve her anahtarla çalışan flash modeli
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.8-flash',
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
