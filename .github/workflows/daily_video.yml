@@ -1,4 +1,4 @@
-name: Günlük Otomatik Gizem Videosu Üretici v2 (AI Görselli)
+name: Günlük Otomatik Gizem Videosu Üretici
 
 on:
   schedule:
@@ -8,17 +8,15 @@ on:
 jobs:
   build_and_upload_video:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
       - name: Depoyu Kopyala
         uses: actions/checkout@v4
 
-      - name: FFmpeg, ImageMagick ve Font Kurulumu
-        timeout-minutes: 8
+      - name: Sadece FFmpeg Kurulumu
         run: |
-          sudo apt-get install -y --no-install-recommends ffmpeg imagemagick fonts-dejavu-core || (sudo apt-get update -y && sudo apt-get install -y ffmpeg imagemagick fonts-dejavu-core)
-          sudo sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' /etc/ImageMagick-6/policy.xml || true
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
 
       - name: Python Kurulumu
         uses: actions/setup-python@v5
@@ -33,6 +31,7 @@ jobs:
       - name: Otomasyon Botunu Çalıştır
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
