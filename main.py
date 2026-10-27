@@ -24,30 +24,34 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-def get_working_model():
-    """Hesapta aktif olan güncel Gemini modelini otomatik bulur."""
-    available_models = []
+def get_candidate_models():
+    """Hesapta kullanılabilir Gemini modellerini, en yeniden eskiye doğru aday listesi olarak döndürür."""
+    available = []
     for m in genai.list_models():
         if 'generateContent' in m.supported_generation_methods:
-            available_models.append(m.name)
+            available.append(m.name)
 
-    print("Hesapta bulunan aktif modeller:", available_models)
+    print("Hesapta bulunan modeller:", available)
 
-    # Öncelik sırasına göre en uygun flash modelini seç
-    for preferred in ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-flash-latest']:
-        if preferred in available_models:
-            return preferred
+    skip = ['image', 'tts', 'live', 'audio', 'embedding', 'robotics', 'computer-use', 'vision']
+    flash = sorted(
+        [m for m in available if 'flash' in m and not any(x in m for x in skip)], reverse=True
+    )
+    pro = sorted(
+        [m for m in available if 'pro' in m and not any(x in m for x in skip)], reverse=True
+    )
 
-    # İçinde flash geçen ilk METİN modelini seç (görsel/ses/canlı modelleri hariç)
-    for m in available_models:
-        if 'flash' in m and not any(x in m for x in ['image', 'tts', 'live', 'audio']):
-            return m
+    candidates = []
+    if 'models/gemini-flash-latest' in flash:
+        candidates.append('models/gemini-flash-latest')
+    for m in flash + pro:
+        if m not in candidates:
+            candidates.append(m)
 
-    if not available_models:
+    if not candidates:
         raise RuntimeError("Kullanılabilir hiçbir Gemini modeli bulunamadı. API anahtarını kontrol edin.")
 
-    # Hiçbiri yoksa listedeki ilk uygun modeli seç
-    return available_models[0]
+    return candidates[:10]
 
 
 def generate_script():
@@ -73,19 +77,31 @@ def generate_script():
     }
     """
 
-    model_name = get_working_model()
-    print(f"Seçilen model: {model_name}")
+    data = None
+    last_error = None
+    for model_name in get_candidate_models():
+        print(f"Model deneniyor: {model_name}")
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json", "temperature": 0.8}
+            )
+            data = json.loads(response.text)
+            # Bazen model liste döndürür, ilk elemanı al
+            if isinstance(data, list):
+                data = data[0]
+            _ = data['title'], data['script']
+            print(f"Seçilen model: {model_name}")
+            break
+        except Exception as e:
+            print(f"{model_name} çalışmadı: {str(e)[:300]}")
+            last_error = e
+            data = None
 
-    model = genai.GenerativeModel(model_name)
-    response = model.generate_content(
-        prompt,
-        generation_config={"response_mime_type": "application/json", "temperature": 0.8}
-    )
+    if data is None:
+        raise RuntimeError(f"Hiçbir Gemini modeli çalışmadı. Son hata: {last_error}")
 
-    data = json.loads(response.text)
-    # Bazen model liste döndürür, ilk elemanı al
-    if isinstance(data, list):
-        data = data[0]
     print(f"Başlık: {data['title']}")
     return data
 
