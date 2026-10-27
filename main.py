@@ -4,7 +4,8 @@ import asyncio
 import requests
 import numpy as np
 from PIL import Image
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
@@ -16,16 +17,17 @@ from moviepy.editor import (
 from moviepy.audio.AudioClip import AudioArrayClip
 import moviepy.audio.fx.all as afx
 
-# Pillow 10+ uyumluluk yaması
 if not hasattr(Image, 'ANTIALIAS'):
     Image.ANTIALIAS = Image.LANCZOS
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+
+# Yeni nesil official Google GenAI istemcisi
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 1. VİRAL SENARYO VE PEXELS VİDEO PROMPTLARI
+# 1. VİRAL SENARYO VE PEXELS PROMPTLARI
 # ==========================================
 def generate_script():
     print("[1/5] Gemini ile viral gizem senaryosu üretiliyor...")
@@ -60,11 +62,14 @@ def generate_script():
     }
     """
     
-    # En kararlı çalışan standart model
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(
-        prompt,
-        generation_config={"response_mime_type": "application/json", "temperature": 0.85}
+    # En güncel ve her anahtarla çalışan flash modeli
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.85
+        )
     )
     
     data = json.loads(response.text)
